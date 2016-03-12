@@ -1,0 +1,118 @@
+console.log("Window Open");
+document.write("<script src='jquery.min.js'></script>");
+// 异步方法，等待加载完成
+setTimeout("Start()",5000);
+// 当新窗口创建时运行，但是第一次打开chrome时并不会有该监听事件
+// 因为是先打开的窗口，再直接执行的background.js程序
+// 不过以下的程序可以作为程序调试时使用的触发程序，就不用每次都关闭再打开chrome了
+// chrome.windows.onCreated.addListener(function(window){
+// 	console.log("Window Open");
+// 	document.write("<script src='jquery.min.js'></script>");
+// 	// 异步方法，等待加载完成
+// 	setTimeout("Start()",5000);
+// });
+// --------------------
+chrome.webRequest.onBeforeSendHeaders.addListener(
+	function(details) {
+		console.log("onBeforeSendHeaders----------------");
+		for (var i = 0; i < details.requestHeaders.length; ++i) {
+			console.log(details.requestHeaders[i].name);
+		    if (details.requestHeaders[i].name === 'Referer') {
+				details.requestHeaders[i].value="http://wenku.baidu.com/task/browse/daily";
+				console.log(details.requestHeaders[i].value);
+				break;//停止输出
+		    }
+		}
+		// 原来的chrome发出的请求是没有Referer这个头的，上面的代码并没有用，所以要自己加上
+		var Referer={
+			name:'Referer',
+			value:"http://wenku.baidu.com/task/browse/daily"
+		};
+		details.requestHeaders.push(Referer);
+
+		console.log(details);
+		return {requestHeaders: details.requestHeaders};
+	},
+	// filters
+    {urls: ["http://wenku.baidu.com/task/submit/signin","http://wenku.baidu.com/vcode"]},
+    // extraInfoSpec
+    ["blocking", "requestHeaders"]
+);
+
+// 百度文库签到地址，get请求
+// http://wenku.baidu.com/task/submit/signin
+function Start(){
+	console.log("Start");
+	TieBa();
+	WenKu();
+}
+
+function TieBa(){
+	$.get("http://tieba.baidu.com/",function(data){
+		//方法一
+		// $()让html即使不被赋予某个元素也能被检索
+		var list=$($.parseHTML(data)).find("#likeforumwraper > a");
+		console.log(list.length);
+		GetList(list);
+		// 方法二
+		// document.write(data);
+		// 上面的方法是异步的
+		// setTimeout("GetList()",2000);
+	});
+}
+
+function WenKu(){
+	$.get("http://wenku.baidu.com/task/submit/signin",function(data){
+		console.log("data.errno::"+data.errno);
+		if (data.errno==1) {
+			window.open("http://wenku.baidu.com/task/browse/daily");
+			alert("点击签到，获取下载券^_^");
+			/*$.getJSON("http://wenku.baidu.com/vcode",function (data){
+				console.log(data);
+			});*/
+		}
+	},"json");
+}
+
+// function function_name(popup) {
+// 	console.log(popup);
+// 	popup.test();
+// }
+
+function GetList(list){
+	// 配合方法二
+	// var list=$("#likeforumwraper > a");
+	// console.log(list.length);
+
+	list.each(function(){
+		var href=$(this).attr("href");
+		var kw=$(this).text();
+		console.log(href);
+		console.log(kw);
+		Sign(kw,href);
+	});
+}
+
+function Sign(kw,parm){
+	var url="http://tieba.baidu.com"+parm;
+	$.get(url,function(data){
+		//_.Module.use('puser/widget/UserVisitCard',{'uname':'王来运13','is_login':1,'tbs':'ea61654cf01eda9a1456364127'});
+		// 方法一截取
+		var index=data.search(/is_login':1,'tbs':'/);
+		// console.log(index);
+		var tbs=data.substr(index+19,26);
+		console.log(tbs);
+		// 方法二分割split()
+		// 未实验
+		// var s1=data.split("is_login':1,'tbs':'");
+		// var s2=s1[1].split("'");
+		// tbs=s2[0];
+		Post(kw,tbs);
+	});
+}
+
+function Post(kw,tbs){
+	$.post("http://tieba.baidu.com/sign/add",{ie:"utf-8",kw:kw,tbs:tbs+""},function(){
+		console.log("Signed");
+	});
+}
