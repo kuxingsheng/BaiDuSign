@@ -6,7 +6,7 @@ console.log("Window Open");
 
 var now=new Date();
 var lastSign=localStorage.getItem("lastSign");
-if (lastSign && new Date(now.getYear(),now.getMonth(),now.getDate())<new Date(lastSign)) {
+if (lastSign && new Date(now.getFullYear(),now.getMonth(),now.getDate())<new Date(lastSign)) {
 	console.log("已经签到");
 }else{
 	document.write("<script src='jquery.min.js'></script>");
